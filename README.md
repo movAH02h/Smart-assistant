@@ -1,3 +1,6 @@
+Полезные сайты:</br>
+https://stacktuts.com/how-to-use-after-method-in-tkinter
+
 # Smart-assistant - умный голосовой помощник Галя
 
 ## Структруа проекта:
