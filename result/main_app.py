@@ -1,6 +1,7 @@
 import threading
 import tkinter as tk
 from functions import click
+
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
