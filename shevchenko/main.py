@@ -74,7 +74,6 @@ def play_voice_assistant_speech(text_to_speech, lang='ru', tld='ru'):
     os.remove("assistant_speech.mp3")
 
 
-
 def audio_record_recognize():
     """
     Запись и распознавание речи
@@ -172,14 +171,6 @@ def get_current_date(format_type):
 
     if format_type == "full_date":
         return f"Сегодня {day_of_week}, {day} {month} {year} года."
-    elif format_type == "day_of_week":
-        return f"Сегодня {day_of_week}."
-    elif format_type == "day":
-        return f"Сегодня {day} {month}, {day_of_week}."
-    elif format_type == "month":
-        return f"Сейчас идёт {month}."
-    elif format_type == "year":
-        return f"Сейчас {year}."
 
 
 def send_email(email_config, config):
@@ -356,14 +347,6 @@ def handle_intent(intent, config, assistant):
         elif intent == "current_date":
             if "какая сегодня дата" in examples:
                 current_date = get_current_date("full_date")
-            elif "какой сегодня день недели" in examples:
-                current_date = get_current_date("day_of_week")
-            elif "какой сегодня день" in examples:
-                current_date = get_current_date("day")
-            elif "какой месяц сейчас" in examples:
-                current_date = get_current_date("month")
-            elif "какой сейчас год" in examples:
-                current_date = get_current_date("year")
             play_voice_assistant_speech(current_date)
         # elif intent == "time_in_city":
         #     examples = config["intents"][intent]["examples"]
