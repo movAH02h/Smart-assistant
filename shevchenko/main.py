@@ -11,8 +11,16 @@ import requests
 from bs4 import BeautifulSoup
 import time
 import locale
+from googletrans import Translator
 
-# import spacy
+
+# # для отправки письма
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+#
+# # для опций с OpenCV
+# import cv2
 
 
 class VoiceAssistant:
@@ -23,6 +31,29 @@ class VoiceAssistant:
     sex = ""
     speech_language = ""
     recognition_language = ""
+    todo_list = []  # Создаем пустой список для хранения задач
+
+    def create_todo_list(self):
+        self.todo_list = []  # Очищаем список задач при создании нового списка
+        play_voice_assistant_speech("Создан новый список дел.")
+
+    def add_to_todo_list(self, task):
+        self.todo_list.append(task)
+        play_voice_assistant_speech(f"Задача '{task}' добавлена в список дел.")
+
+    def remove_from_todo_list(self, task):
+        if task in self.todo_list:
+            self.todo_list.remove(task)
+            play_voice_assistant_speech(f"Задача '{task}' удалена из списка дел.")
+        else:
+            play_voice_assistant_speech(f"Задачи '{task}' нет в списке дел.")
+
+    def show_todo_list(self):
+        if self.todo_list:
+            tasks = ", ".join(self.todo_list)
+            play_voice_assistant_speech(f"Список задач на сегодня: {tasks}.")
+        else:
+            play_voice_assistant_speech("Список задач пуст.")
 
 
 def setup_voice():
@@ -33,14 +64,15 @@ def setup_voice():
     pass
 
 
-def play_voice_assistant_speech(text_to_speech):
+def play_voice_assistant_speech(text_to_speech, lang='ru', tld='ru'):
     """
     Проигрывание речи ответов голосового ассистента
     """
-    tts = gTTS(text=text_to_speech, lang='ru')
+    tts = gTTS(text=text_to_speech, lang=lang, tld=tld)
     tts.save("assistant_speech.mp3")
     os.system("afplay assistant_speech.mp3")
     os.remove("assistant_speech.mp3")
+
 
 
 def audio_record_recognize():
@@ -109,17 +141,6 @@ def get_greeting_response(config):
         return random.choice(greeting_intent["responses"])
 
 
-# nlp = spacy.load("ru_core_news_sm")
-
-
-# def extract_city_from_query(query):
-#     doc = nlp(query)
-#     for token in doc:
-#         if token.pos_ == "PROPN":
-#             return token.text.capitalize()
-#     return None
-#
-#
 # def time_in_city(city_name):
 #     """
 #     Получает текущее время в указанном городе и произносит его пользователю.
@@ -139,6 +160,7 @@ def get_greeting_response(config):
 #             play_voice_assistant_speech("Извините, не удалось получить время для указанного города.")
 #     except Exception as e:
 #         play_voice_assistant_speech("Произошла ошибка при получении времени. Попробуйте еще раз.")
+
 
 def get_current_date(format_type):
     locale.setlocale(locale.LC_TIME, 'ru_RU.UTF-8')  # Установка локали для вывода на русском языке
@@ -160,7 +182,121 @@ def get_current_date(format_type):
         return f"Сейчас {year}."
 
 
-def handle_intent(intent, config):
+def send_email(email_config, config):
+    email_address = email_config.get("email_address")
+    email_subject = email_config.get("email_subject")
+    email_message = email_config.get("email_message")
+
+    # Получаем данные о отправителе из конфигурации
+    sender_email = config["email_credentials"]["sender_email"]
+    sender_password = config["email_credentials"]["sender_password"]
+
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = email_address
+    msg['Subject'] = email_subject
+    msg.attach(MIMEText(email_message, 'plain'))
+
+    try:
+        # Используем порт 465 и протокол SSL
+        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+        server.login(sender_email, sender_password)
+        text = msg.as_string()
+        server.sendmail(sender_email, email_address, text)
+        server.quit()
+        print("Письмо успешно отправлено!")
+    except Exception as e:
+        print(f"Ошибка отправки письма: {e}")
+
+
+# Добавляем функцию для OpenCV
+# def detect_faces_and_emotions():
+#     face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+#     emotion_classifier = cv2.dnn.readNetFromTensorflow('emotion_model.pb')
+#     cap = cv2.VideoCapture(0)
+#
+#     while True:
+#         ret, frame = cap.read()
+#         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+#
+#         faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+#
+#         for (x, y, w, h) in faces:
+#             face_roi = gray[y:y+h, x:x+w]
+#             resized_roi = cv2.resize(face_roi, (48, 48))
+#
+#             blob = cv2.dnn.blobFromImage(resized_roi, 1.0 / 255, (48, 48), (0, 0, 0), swapRB=True, crop=False)
+#             emotion_classifier.setInput(blob)
+#
+#             emotions = emotion_classifier.forward()
+#             emotion_index = emotions[0].argmax()
+#             emotion_dict = {0: "Angry", 1: "Disgusted", 2: "Fearful", 3: "Happy", 4: "Neutral", 5: "Sad", 6: "Surprised"}
+#             emotion_label = emotion_dict[emotion_index]
+#
+#             cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
+#             cv2.putText(frame, emotion_label, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+#
+#         cv2.imshow('Emotion Detection', frame)
+#
+#         if cv2.waitKey(1) & 0xFF == ord('q'):
+#             break
+#
+#     cap.release()
+#     cv2.destroyAllWindows()
+
+
+def translate_to_english(text):
+    translator = Translator()
+    translated_text = translator.translate(text, src='ru', dest='en')
+    return translated_text.text
+
+
+def translate_to_russian(text):
+    translator = Translator()
+    translated_text = translator.translate(text, src='en', dest='ru')
+    return translated_text.text
+
+
+def search_recipe(query):
+    """
+    Поиск рецепта по запросу пользователя с помощью API The Meal DB
+    """
+    translated_query = translate_to_english(query)
+    url = f"https://www.themealdb.com/api/json/v1/1/search.php?s={translated_query}"
+    response = requests.get(url)
+    data = response.json()
+
+    if data['meals']:
+        meal = data['meals'][0]
+        recipe_name = translate_to_russian(meal['strMeal'])
+        ingredients = []
+        for i in range(1, 21):
+            ingredient = meal.get(f'strIngredient{i}')
+            if ingredient:
+                ingredients.append(translate_to_russian(ingredient))
+            else:
+                break
+
+        instructions = translate_to_russian(meal['strInstructions'])
+
+        recipe_text = f"Рецепт блюда {recipe_name}:"
+        recipe_text += "\n\nИнгредиенты:"
+        for ingredient in ingredients:
+            recipe_text += f"\n- {ingredient}"
+        recipe_text += f"\n\nИнструкции по приготовлению:\n{instructions}"
+
+        play_voice_assistant_speech(recipe_text)
+    else:
+        error_responses = [
+            "К сожалению, я не смог найти рецепт для этого блюда.",
+            "Извините, я не знаю, как готовить это блюдо.",
+            "Мне кажется, я не знаю рецепта для этого блюда.",
+            "Похоже, я не могу найти информацию о рецепте для этого блюда."
+        ]
+        play_voice_assistant_speech(random.choice(error_responses))
+
+
+def handle_intent(intent, config, assistant):
     """
     Обработка намерений пользователя
     """
@@ -238,13 +374,38 @@ def handle_intent(intent, config):
         #         time_in_city(city)
         #     else:
         #         play_voice_assistant_speech("К сожалению, я не могу определить город. Пожалуйста, укажите его явно.")
+        elif intent == "send_email":
+            play_voice_assistant_speech(random.choice(responses))
+            send_email(config["intents"][intent], config)
+        elif intent == "to_do_list_create":
+            assistant.create_todo_list()
+        elif intent == "to_do_list_add":
+            play_voice_assistant_speech(random.choice(responses))
+            user_input = audio_record_recognize()
+            assistant.add_to_todo_list(user_input)
+        elif intent == "to_do_list_remove":
+            play_voice_assistant_speech(random.choice(responses))
+            user_input = audio_record_recognize()
+            assistant.remove_from_todo_list(user_input)
+        elif intent == "to_do_list_show":
+            assistant.show_todo_list()
+        elif intent == "recipe_search":
+            play_voice_assistant_speech(random.choice(responses))
+            user_query = audio_record_recognize()
+            search_recipe(user_query)
+        # elif intent == "detect_faces_and_emotions":
+        #     play_voice_assistant_speech(random.choice(responses))
+        #     detect_faces_and_emotions()
     else:
         play_voice_assistant_speech(config["failure_phrases"])
 
 
 def main():
+
     with open("config.json", "r") as file:
         config = json.load(file)
+
+    assistant = VoiceAssistant()
 
     try:
         while True:
@@ -254,7 +415,7 @@ def main():
             for intent, data in config["intents"].items():
                 for example in data["examples"]:
                     if example in voice_input:
-                        handle_intent(intent, config)
+                        handle_intent(intent, config, assistant)
                         break
     finally:
         # Удаляем файл microphone-results.wav по завершении работы программы
