@@ -1,4 +1,5 @@
 import speech_recognition
+import wave
 from gtts import gTTS
 import os
 import json
@@ -21,6 +22,8 @@ from email.mime.multipart import MIMEMultipart
 #
 # # для опций с OpenCV
 # import cv2
+
+from vosk import Model, KaldiRecognizer, SetLogLevel
 
 
 class VoiceAssistant:
@@ -94,16 +97,50 @@ def audio_record_recognize():
 
         except speech_recognition.WaitTimeoutError:
             print("Проверьте, включён ли ваш микрофон.")
-            return
+            return ""
 
+        # Пытаемся выполнить онлайн распознавание
         try:
-            print("Начинаю распознание...")
+            print("Начинаю онлайн распознавание...")
             recognized_data = recognizer.recognize_google(audio, language="ru").lower()
+            print("Распознано онлайн:", recognized_data)
 
         except speech_recognition.UnknownValueError:
             pass
 
+        # Если онлайн распознавание не удалось, пытаемся выполнить оффлайн распознавание
+        if not recognized_data:
+            print("Онлайн распознавание не удалось, выполняю оффлайн распознавание...")
+            recognized_data = offline_recognition()
+
     return recognized_data
+
+
+def offline_recognition():
+    """
+    Переключение на оффлайн-распознавание речи с использованием модели Vosk
+    """
+    # Устанавливаем уровень логирования для Vosk
+    SetLogLevel(0)
+
+    # Загружаем модель для русского языка
+    model = Model("path/to/vosk-model-small-ru-0.22")
+
+    # Создаем рекогнайзер
+    recognizer = KaldiRecognizer(model, 16000)
+
+    # Читаем аудиофайл и выполняем распознавание
+    with wave.open("microphone-results.wav", "rb") as wf:
+        # Считываем все данные из аудиофайла
+        data = wf.readframes(wf.getnframes())
+        if len(data) == 0:
+            return ""  # Возвращаем пустую строку, если аудиофайл пустой
+
+        # Передаем данные рекогнайзеру и получаем результат распознавания
+        recognizer.AcceptWaveform(data)
+
+        # Получаем и возвращаем результат распознавания
+        return recognizer.Result()
 
 
 def get_time_of_day():
@@ -123,7 +160,8 @@ def get_time_of_day():
 
 def get_greeting_response(config):
     """
-    Получает ответ на приветствие в соответствии с текущим временем суток или рандомный выбор из блока "get_greeting_response"
+    Получает ответ на приветствие в соответствии с текущим временем суток
+    или рандомный выбор из блока "get_greeting_response"
     """
     time_of_day = get_time_of_day()
     greeting_intent = config["intents"]["get_greeting_response"]
@@ -221,7 +259,8 @@ def send_email(email_config, config):
 #
 #             emotions = emotion_classifier.forward()
 #             emotion_index = emotions[0].argmax()
-#             emotion_dict = {0: "Angry", 1: "Disgusted", 2: "Fearful", 3: "Happy", 4: "Neutral", 5: "Sad", 6: "Surprised"}
+#             emotion_dict = {0: "Angry", 1: "Disgusted", 2: "Fearful", 3: "Happy",
+#             4: "Neutral", 5: "Sad", 6: "Surprised"}
 #             emotion_label = emotion_dict[emotion_index]
 #
 #             cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
