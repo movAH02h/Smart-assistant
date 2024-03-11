@@ -101,46 +101,44 @@ def audio_record_recognize():
 
         # Пытаемся выполнить онлайн распознавание
         try:
-            print("Начинаю онлайн распознавание...")
             recognized_data = recognizer.recognize_google(audio, language="ru").lower()
-            print("Распознано онлайн:", recognized_data)
 
         except speech_recognition.UnknownValueError:
             pass
 
-        # Если онлайн распознавание не удалось, пытаемся выполнить оффлайн распознавание
-        if not recognized_data:
-            print("Онлайн распознавание не удалось, выполняю оффлайн распознавание...")
-            recognized_data = offline_recognition()
+        # # Если онлайн распознавание не удалось, пытаемся выполнить оффлайн распознавание
+        # if not recognized_data:
+        #     print("Онлайн распознавание не удалось, выполняю оффлайн распознавание...")
+        #     recognized_data = offline_recognition()
 
     return recognized_data
 
 
-def offline_recognition():
-    """
-    Переключение на оффлайн-распознавание речи с использованием модели Vosk
-    """
-    # Устанавливаем уровень логирования для Vosk
-    SetLogLevel(0)
-
-    # Загружаем модель для русского языка
-    model = Model("path/to/vosk-model-small-ru-0.22")
-
-    # Создаем рекогнайзер
-    recognizer = KaldiRecognizer(model, 16000)
-
-    # Читаем аудиофайл и выполняем распознавание
-    with wave.open("microphone-results.wav", "rb") as wf:
-        # Считываем все данные из аудиофайла
-        data = wf.readframes(wf.getnframes())
-        if len(data) == 0:
-            return ""  # Возвращаем пустую строку, если аудиофайл пустой
-
-        # Передаем данные рекогнайзеру и получаем результат распознавания
-        recognizer.AcceptWaveform(data)
-
-        # Получаем и возвращаем результат распознавания
-        return recognizer.Result()
+# def offline_recognition():
+#     """
+#     Переключение на оффлайн-распознавание речи с использованием модели Vosk
+#     """
+#     # Устанавливаем уровень логирования для Vosk
+#     SetLogLevel(0)
+#
+#     # Загружаем модель для русского языка
+#     model = Model("path/to/vosk-model-small-ru-0.22")
+#
+#     # Создаем рекогнайзер
+#     recognizer = KaldiRecognizer(model, 16000)
+#
+#     # Читаем аудиофайл и выполняем распознавание
+#     with wave.open("microphone-results.wav", "rb") as wf:
+#         # Считываем все данные из аудиофайла
+#         data = wf.readframes(wf.getnframes())
+#         if len(data) == 0:
+#             return ""  # Возвращаем пустую строку, если аудиофайл пустой
+#
+#         # Передаем данные рекогнайзеру и получаем результат распознавания
+#         recognizer.AcceptWaveform(data)
+#
+#         # Получаем и возвращаем результат распознавания
+#         return recognizer.Result()
 
 
 def get_time_of_day():
@@ -236,6 +234,30 @@ def send_email(email_config, config):
         print("Письмо успешно отправлено!")
     except Exception as e:
         print(f"Ошибка отправки письма: {e}")
+
+
+def prompt_for_vk_search_query():
+    """
+    Запрашивает у пользователя имя и фамилию для поиска в ВКонтакте
+    """
+    play_voice_assistant_speech("Кого вы бы хотели найти в ВКонтакте?")
+    name = audio_record_recognize().split()  # Разделение введенной строки на отдельные слова
+    return name
+
+
+def search_person_vk(name):
+    """
+    Поиск человека по базе данных социальной сети ВКонтакте
+    """
+    if not name:
+        play_voice_assistant_speech("Имя для поиска не указано.")
+        return
+
+    formatted_name = " ".join(part.capitalize() for part in name)
+    vk_search_term_encoded = urllib.parse.quote(formatted_name)
+    vk_url = "https://vk.com/people/" + vk_search_term_encoded
+    webbrowser.get().open(vk_url)
+    play_voice_assistant_speech("Поиск в социальной сети ВКонтакте выполнен.")
 
 
 # Добавляем функцию для OpenCV
@@ -418,6 +440,10 @@ def handle_intent(intent, config, assistant):
         # elif intent == "detect_faces_and_emotions":
         #     play_voice_assistant_speech(random.choice(responses))
         #     detect_faces_and_emotions()
+        elif intent == "search_person_vk":
+            play_voice_assistant_speech(random.choice(responses))
+            name = prompt_for_vk_search_query()
+            search_person_vk(name)
     else:
         play_voice_assistant_speech(config["failure_phrases"])
 
