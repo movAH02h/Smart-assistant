@@ -1,3 +1,5 @@
+result, new_version - это версии проекта без модуля Sequential</br>
+
 Полезные сайты:</br>
 https://stacktuts.com/how-to-use-after-method-in-tkinter
 
