@@ -1,4 +1,5 @@
 result, new_version, project26_03_2024 - это версии проекта без модуля Sequential</br>
+Давность этих версий проекта можно определить по времени коммита</br>
 
 Полезные сайты:</br>
 https://stacktuts.com/how-to-use-after-method-in-tkinter
