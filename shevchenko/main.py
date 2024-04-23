@@ -1,5 +1,5 @@
+import subprocess
 import speech_recognition
-import wave
 from gtts import gTTS
 import os
 import json
@@ -19,11 +19,9 @@ from googletrans import Translator
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-#
-# # для опций с OpenCV
-# import cv2
 
-from vosk import Model, KaldiRecognizer, SetLogLevel
+# для таймера
+import threading
 
 
 class VoiceAssistant:
@@ -260,43 +258,6 @@ def search_person_vk(name):
     play_voice_assistant_speech("Поиск в социальной сети ВКонтакте выполнен.")
 
 
-# Добавляем функцию для OpenCV
-# def detect_faces_and_emotions():
-#     face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-#     emotion_classifier = cv2.dnn.readNetFromTensorflow('emotion_model.pb')
-#     cap = cv2.VideoCapture(0)
-#
-#     while True:
-#         ret, frame = cap.read()
-#         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-#
-#         faces = face_cascade.detectMultiScale(gray, 1.3, 5)
-#
-#         for (x, y, w, h) in faces:
-#             face_roi = gray[y:y+h, x:x+w]
-#             resized_roi = cv2.resize(face_roi, (48, 48))
-#
-#             blob = cv2.dnn.blobFromImage(resized_roi, 1.0 / 255, (48, 48), (0, 0, 0), swapRB=True, crop=False)
-#             emotion_classifier.setInput(blob)
-#
-#             emotions = emotion_classifier.forward()
-#             emotion_index = emotions[0].argmax()
-#             emotion_dict = {0: "Angry", 1: "Disgusted", 2: "Fearful", 3: "Happy",
-#             4: "Neutral", 5: "Sad", 6: "Surprised"}
-#             emotion_label = emotion_dict[emotion_index]
-#
-#             cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
-#             cv2.putText(frame, emotion_label, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
-#
-#         cv2.imshow('Emotion Detection', frame)
-#
-#         if cv2.waitKey(1) & 0xFF == ord('q'):
-#             break
-#
-#     cap.release()
-#     cv2.destroyAllWindows()
-
-
 def translate_to_english(text):
     translator = Translator()
     translated_text = translator.translate(text, src='ru', dest='en')
@@ -346,6 +307,60 @@ def search_recipe(query):
             "Похоже, я не могу найти информацию о рецепте для этого блюда."
         ]
         play_voice_assistant_speech(random.choice(error_responses))
+
+
+def toss_coin():
+    """
+    Подбрасывание монетки после запроса стороны у пользователя
+    """
+    play_voice_assistant_speech("Выберите сторону: орёл или решка.")
+    user_choice = audio_record_recognize()
+    user_choice = user_choice.lower()
+
+    while user_choice not in ["орёл", "решка"]:
+        play_voice_assistant_speech("Пожалуйста, выберите только 'орёл' или 'решка'.")
+        user_choice = audio_record_recognize()
+        user_choice = user_choice.lower()
+
+    coin_side = random.choice(["орёл", "решка"])
+
+    if user_choice == coin_side:
+        result = "Вы победили! "
+    else:
+        result = "Вы проиграли. "
+
+    return result + f"Монета выпала на {coin_side}."
+
+
+def record_voice_to_text(filename):
+    """
+    Запись голосового ввода пользователя в текстовый файл
+    """
+    play_voice_assistant_speech("Пожалуйста, скажите текст для записи в файл.")
+    user_input = audio_record_recognize()
+
+    if user_input:
+        with open(filename, "a") as file:
+            # Проверяем, существует ли файл, если нет, то создаем его
+            if not os.path.exists(filename):
+                file.write("Голосовая запись:\n")
+            file.write(user_input + "\n")
+        play_voice_assistant_speech("Текст успешно записан в файл.")
+    else:
+        play_voice_assistant_speech("Не удалось распознать речь. Попробуйте еще раз.")
+
+
+def set_timer(seconds):
+    """
+    Установка таймера на определенное количество секунд
+    """
+    def timer_complete():
+        play_voice_assistant_speech("Время вышло!")
+
+    # Создаем таймер с указанным временем
+    timer = threading.Timer(seconds, timer_complete)
+    timer.start()
+    play_voice_assistant_speech(f"Таймер установлен на {seconds} секунд.")
 
 
 def handle_intent(intent, config, assistant):
@@ -404,20 +419,13 @@ def handle_intent(intent, config, assistant):
 
         elif intent == "checking_time":
             current_time = datetime.datetime.now().strftime("%H:%M")
-            play_voice_assistant_speech(f"Сейчас {current_time}")
+            play_voice_assistant_speech(random.choice(responses))
+            play_voice_assistant_speech(f"{current_time}")
         elif intent == "current_date":
             if "какая сегодня дата" in examples:
                 current_date = get_current_date("full_date")
+            play_voice_assistant_speech(random.choice(responses))
             play_voice_assistant_speech(current_date)
-        # elif intent == "time_in_city":
-        #     examples = config["intents"][intent]["examples"]
-        #     play_voice_assistant_speech(random.choice(examples))
-        #     user_query = audio_record_recognize()
-        #     city = extract_city_from_query(user_query)
-        #     if city:
-        #         time_in_city(city)
-        #     else:
-        #         play_voice_assistant_speech("К сожалению, я не могу определить город. Пожалуйста, укажите его явно.")
         elif intent == "send_email":
             play_voice_assistant_speech(random.choice(responses))
             send_email(config["intents"][intent], config)
@@ -437,13 +445,27 @@ def handle_intent(intent, config, assistant):
             play_voice_assistant_speech(random.choice(responses))
             user_query = audio_record_recognize()
             search_recipe(user_query)
-        # elif intent == "detect_faces_and_emotions":
-        #     play_voice_assistant_speech(random.choice(responses))
-        #     detect_faces_and_emotions()
         elif intent == "search_person_vk":
             play_voice_assistant_speech(random.choice(responses))
             name = prompt_for_vk_search_query()
             search_person_vk(name)
+        elif intent == "toss_coin":
+            play_voice_assistant_speech(random.choice(responses))
+            result = toss_coin()
+            play_voice_assistant_speech(result)
+        elif intent == "record_to_file":
+            play_voice_assistant_speech(random.choice(responses))
+            record_voice_to_text("recorded_text.txt")
+        elif intent == "set_timer":
+            play_voice_assistant_speech(random.choice(responses))
+            play_voice_assistant_speech("На сколько секунд установить таймер?")
+            user_input = audio_record_recognize()
+            try:
+                seconds = int(user_input)
+                set_timer(seconds)
+            except ValueError:
+                play_voice_assistant_speech("Пожалуйста, укажите число секунд для таймера.")
+
     else:
         play_voice_assistant_speech(config["failure_phrases"])
 
@@ -473,3 +495,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
