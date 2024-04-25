@@ -6,7 +6,7 @@ from tensorflow import keras
 import torch
 import os
 
-class App(tk.Tk):
+class main_app(tk.Tk):
     def __init__(self, model, tokenizer, lbl_encoder, speak_model):
         super().__init__()
         #Инициализация полей для ИИ
@@ -72,7 +72,7 @@ def main():
     with open('../neural_network/label_encoder.pickle', 'rb') as enc:
         lbl_encoder = pickle.load(enc)
 
-    app = App(model, tokenizer, lbl_encoder, speak_model)
+    app = main_app(model, tokenizer, lbl_encoder, speak_model)
     app.mainloop()
 
 if __name__ == "__main__":

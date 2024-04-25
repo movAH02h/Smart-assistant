@@ -8,6 +8,7 @@ from pycbrf import ExchangeRates
 from pyowm.utils.config import get_default_config
 import random
 import queue
+from num2words import num2words
 import sounddevice as sd
 import vosk
 import locale
@@ -25,6 +26,7 @@ from tensorflow import keras
 import smtplib
 from email.mime.text import MIMEText
 from email.header import Header
+import pymorphy2
 
 class NotFoundException(Exception):
     pass
@@ -68,25 +70,79 @@ def help(speak_model):
         for lines in information:
             print(lines)
     except:
-        print("file is not found")
+        print("file is not found.")
+        say("что-то пошло не так.", speak_model)
 
+def coin(speak_model):
 
+    result = random.randint(1, 2)
 
+    if result == 1:
+        say('Вам выпала решка.', speak_model)
+    else:
+        say('Вам выпал орёл.', speak_model)
+
+def translate_to_text(speak_model):
+    try:
+        file = open("../user_results/speech_to_text.txt", 'w', encoding='utf-8')
+        text = listen()
+        file.write(text)
+        file.close()
+    except:
+        print("ошибка открытия файла")
+        say("что-то пошло не так.", speak_model)
 
 def checking_time(speak_model):
-    current_time = datetime.datetime.now().strftime("%H:%M")
-    print(f"Сейчас {current_time}")
-    say(f"Сейчас {current_time}", speak_model)
+    def declension(n, form_0, form_1, form_2):
+        units = n % 10
+        tens = (n // 10) % 10
+        if tens == 1:
+            return form_0
+        if units in [0, 5, 6, 7, 8, 9]:
+            return form_0
+        if units == 1:
+            return form_1
+        if units in [2, 3, 4]:
+            return form_2
+
+    current_time = datetime.datetime.now().strftime("%H:%M").split(':')
+
+    hours = num2words(current_time[0], lang='ru', to='cardinal')
+    hours_word = declension(int(current_time[0]), 'часов', 'час', 'часа')
+
+    minutes = num2words(current_time[1], lang='ru', to='cardinal')
+    minutes_word = declension(int(current_time[1]), 'минут', 'минута', 'минуты')
+
+    say(f'Сейчас {hours} {hours_word} и {minutes} {minutes_word}.', speak_model)
+
 
 def current_date(speak_model):
-    locale.setlocale(locale.LC_TIME, 'ru')  # Установка локали для вывода на русском языке
+    def get_appropriate_form_of_date(day, month, year):
+        morph = pymorphy2.MorphAnalyzer(lang='ru')
+
+        day = num2words(day, lang='ru', to='ordinal').split()
+        day[-1] = morph.parse(day[-1])[0].inflect({'neut', 'nomn'}).word
+        day = ' '.join(day)
+
+        month = morph.parse(month)[0].inflect({'gent'}).word
+
+        year = num2words(year, lang='ru', to='ordinal').split()
+        year[-1] = morph.parse(year[-1])[0].inflect({'neut', 'gent'}).word
+        year = ' '.join(year)
+
+        return day, month, year
+
+    locale.setlocale(locale.LC_TIME, 'ru')  # Установка локали для вывода на русском язык
     date = datetime.datetime.now()
-    day_of_week = date.strftime("%A")
+
     day = date.day
+    day_of_week = date.strftime("%A")
     month = date.strftime("%B")  # Форматируем месяц с большой буквы
     year = date.year
 
-    say(f"Сегодня {day_of_week}, {day} {month} {year} года.", speak_model)
+    day, month, year = get_appropriate_form_of_date(day, month, year)
+
+    say(f"Сейчас {day_of_week}, {day} {month} {year} года.", speak_model)
 
 def translate_to_english(speak_model):
     text = listen()
@@ -95,9 +151,9 @@ def translate_to_english(speak_model):
     try:
         translation = translator.translate(text, dest='en', src='ru')
         print(translation.text)
-        say(f"перевод звучит так: {translation.text}", speak_model)
+        say(f"перевод звучит так: {translation.text}.", speak_model)
     except AttributeError:
-        say("ошибка распознавания. попробуйте еще раз", speak_model)
+        say("ошибка распознавания. Попробуйте еще раз.", speak_model)
 
 def search_recipe(speak_model):
     def russian_to_english(text):
@@ -122,7 +178,7 @@ def search_recipe(speak_model):
 
     translated_query = russian_to_english(query)
     if (translated_query == -1):
-        say("небольшая ошибочка попробуйте еще раз пожалуйста", speak_model)
+        say("небольшая ошибочка попробуйте еще раз пожалуйста.", speak_model)
         return
 
     print(translated_query)
@@ -154,12 +210,12 @@ def search_recipe(speak_model):
             file = open("../user_results/recipe.txt", 'w', encoding='utf-8')
             file.write(recipe_text)
             file.close()
-            say("записал вам информация в файл", speak_model)
+            say("записал вам информация в файл.", speak_model)
         except:
             print("не удалось записать в файл")
 
     else:
-        say("к сожалению в моей базе данных нет такого рецепта. Вот результаты поиска в гугл. Может вам пригодится", speak_model)
+        say("к сожалению в моей базе данных нет такого рецепта. Вот результаты поиска в гугл. Может вам пригодится.", speak_model)
         search_google(speak_model, query)
 
 def search_youtube(speak_model):
@@ -167,16 +223,16 @@ def search_youtube(speak_model):
 
     encoded_query = urllib.parse.quote(user_query)
     webbrowser.open_new_tab(f"https://www.youtube.com/results?search_query={encoded_query}")
-    say("Приятного просмотра", speak_model)
+    say("Приятного просмотра.", speak_model)
 
 def to_do_list_create(speak_model):
     if (os.path.exists("../user_results/to_do_list.txt")):
-        say("такой список уже есть", speak_model)
+        say("такой список уже есть.", speak_model)
     else:
         try:
             file = open("../user_results/to_do_list.txt", "w", encoding='utf-8')
             file.close()
-            say("создан список задач", speak_model)
+            say("создан список задач.", speak_model)
         except:
             print("не удалось создать список задач")
 
@@ -189,18 +245,18 @@ def to_do_list_add(speak_model):
         file.close()
         say(f"Задача '{data}' добавлена в список дел.", speak_model)
     except FileExistsError:
-        say("Список задач для начала нужно создать. Для этого скажите кеша создай список задач", speak_model)
+        say("Список задач для начала нужно создать. Для этого скажите кеша создай список задач.", speak_model)
 
 def to_do_list_show(speak_model):
     try:
         file = open("../user_results/to_do_list.txt", "r", encoding='utf-8')
         content = file.readlines()
         for line in content:
-            say(line)
+            say(line, speak_model)
         file.close()
     except FileExistsError:
         print("no")
-        say("Список задач не создан", speak_model)
+        say("Список задач не создан.", speak_model)
 
 def to_do_list_remove(speak_model):
     try:
@@ -228,7 +284,7 @@ def to_do_list_remove(speak_model):
 
         file.close()
     except FileExistsError:
-        say("сначала надо создать файл с задачами", speak_model)
+        say("сначала надо создать файл с задачами.", speak_model)
 
 def send_message_to_all(speak_model):
 
@@ -274,7 +330,7 @@ def send_message_to_one(speak_model):
             other_mail = data_set.posts[key]
 
     if (current_rate < 30):
-        say("такого человека я не знаю. Мне добавить его в список. да или нет ", speak_model)
+        say("такого человека я не знаю. Мне добавить его в список. да или нет.", speak_model)
 
         answer = listen()
 
@@ -286,7 +342,7 @@ def send_message_to_one(speak_model):
 
 
     mail = 'KARum2004@yandex.ru'
-    say("что написать в письме", speak_model)
+    say("что написать в письме.", speak_model)
     message = listen()
 
     password = ''
@@ -312,6 +368,8 @@ def send_message_to_one(speak_model):
     except Exception as _ex:
         print(f"{_ex}\nCheck your password or email address\n")
 
+
+
 def search_wikipedia(speak_model):
 
     user_query = listen()
@@ -326,8 +384,9 @@ def search_wikipedia(speak_model):
             file = open('../user_results/wiki_result.txt', 'w', encoding='utf-8')
             file.write(text)
             file.close()
-            say("записал в файл результат поиска", speak_model)
+            say("записал в файл результат поиска.", speak_model)
         except:
+            say("что-то пошло не так при открытии файла.", speak_model)
             print("не удалось записать в файл")
     else:
         say("По вашему запросу ничего не найдено в Википедии.", speak_model)
@@ -336,6 +395,18 @@ def offwork(speak_model):
     sys.exit()
 
 def cash_rate(speak_model):
+    def declension(number, form_0, form_1, form_2):
+        units = number % 10
+        tens = (number // 10) % 10
+
+        if tens == 1:
+            return form_0
+        elif units == 1:
+            return form_1
+        elif units in [2, 3, 4]:
+            return form_2
+        elif units in [5, 6, 7, 8, 9]:
+            return form_2
 
     currency = listen()
     total_rate = 0
@@ -355,10 +426,15 @@ def cash_rate(speak_model):
         value = data_set.money[currency]
         rates = ExchangeRates(str(datetime.datetime.now())[:10])
         currency_data = list(filter(lambda el: el.code == value, rates.rates))[0]
-        print(f"{currency} - {currency_data.rate} рублей")
-        say(f"{currency} - {currency_data.rate}", speak_model)
+
+        value = str(round(currency_data.rate, 2)).split('.')
+        rubles = declension(int(value[0]), 'рублей', 'рубль', 'рубля')
+        pennies = declension(int(value[1]), 'копеек', 'копейка', 'копейки')
+
+        answer = currency + ' ' + num2words(value[0], lang='ru') + ' ' + rubles + ' ' + num2words(value[1], lang='ru') + ' ' + pennies + '.'
+        say(answer, speak_model)
     else:
-        say("я пока не знаю о такой валюте", speak_model)
+        say("я пока не знаю о такой валюте.", speak_model)
 
 def weather_forecast(speak_model):
 
@@ -376,7 +452,7 @@ def weather_forecast(speak_model):
         temperature = weather.temperature('celsius').get('temp')
         temperature = round(temperature)
 
-        say(f'Температура в {city} сейчас {temperature}, {forecast}', speak_model)
+        say(f'Температура в {city} сейчас {temperature}, {forecast}.', speak_model)
     except Exception:
         say("Похоже город неверный!", speak_model)
 
@@ -467,7 +543,7 @@ def recognise(speak_model, model, tokenizer, lbl_encoder):
                     else:
                         say(random.choice(i['responses']), speak_model)
         else:
-            say("К сожалению, я пока не знаю, что вам ответить", speak_model)
+            say("К сожалению, я пока не знаю, что вам ответить.", speak_model)
 
 
 
