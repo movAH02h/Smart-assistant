@@ -7,13 +7,14 @@ import torch
 import os
 
 class main_app(tk.Tk):
-    def __init__(self, model, tokenizer, lbl_encoder, speak_model):
+    def __init__(self, model, tokenizer, lbl_encoder, speak_model_ru, speak_model_en):
         super().__init__()
         #Инициализация полей для ИИ
         self.model = model
         self.tokenizer = tokenizer
         self.lbl_encoder = lbl_encoder
-        self.speak_model = speak_model
+        self.speak_model_ru = speak_model_ru
+        self.speak_model_en = speak_model_en
 
         self.title("Голосовой помощник Галя")
         self.geometry('600x500')
@@ -33,7 +34,7 @@ class main_app(tk.Tk):
         self.button.config(state=tk.DISABLED)
         self.button.config(text="Слушаю и выполняю")
         #click - лямбда-функция, которая работает с помощью обуцченной модели
-        thread = threading.Thread(target=lambda: recognise(self.speak_model, self.model, self.tokenizer, self.lbl_encoder))
+        thread = threading.Thread(target=lambda: recognise(self.speak_model_ru, self.speak_model_en,  self.model, self.tokenizer, self.lbl_encoder))
         thread.start()
         self.check_thread(thread)
 
@@ -51,15 +52,24 @@ def main():
     # load speaking model
     device = torch.device('cpu')
     torch.set_num_threads(4)
-    local_file = 'model.pt'
+    local_file_ru = 'model_ru.pt'
+    local_file_en = 'model_en.pt'
 
-    if not os.path.isfile(local_file):
+    if not os.path.isfile(local_file_ru):
         torch.hub.download_url_to_file('https://models.silero.ai/models/tts/ru/v4_ru.pt',
-                                       local_file)
+                                       local_file_ru)
 
-    # Загрузка существующей модели - если есть на компьютере
-    speak_model = torch.package.PackageImporter(local_file).load_pickle("tts_models", "model")
-    speak_model.to(device)
+    if not os.path.isfile(local_file_en):
+        torch.hub.download_url_to_file('https://models.silero.ai/models/tts/en/v3_en.pt',
+                                       local_file_en)
+
+    # Загрузка существующей модели русского языка - если есть на компьютере
+    speak_model_ru = torch.package.PackageImporter(local_file_ru).load_pickle("tts_models", "model")
+    speak_model_ru.to(device)
+
+    # загркзка существующей модели английского языка
+    speak_model_en = torch.package.PackageImporter(local_file_en).load_pickle("tts_models", "model")
+    speak_model_en.to(device)
 
     # load trained model
     model = keras.models.load_model('../neural_network/chat_model.keras')
@@ -72,7 +82,7 @@ def main():
     with open('../neural_network/label_encoder.pickle', 'rb') as enc:
         lbl_encoder = pickle.load(enc)
 
-    app = main_app(model, tokenizer, lbl_encoder, speak_model)
+    app = main_app(model, tokenizer, lbl_encoder, speak_model_ru, speak_model_en)
     app.mainloop()
 
 if __name__ == "__main__":
