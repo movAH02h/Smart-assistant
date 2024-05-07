@@ -9,7 +9,7 @@ import os
 class main_app(tk.Tk):
     def __init__(self, model, tokenizer, lbl_encoder, speak_model_ru, speak_model_en):
         super().__init__()
-        #Инициализация полей для ИИ
+        # Инициализация полей для ИИ
         self.model = model
         self.tokenizer = tokenizer
         self.lbl_encoder = lbl_encoder
@@ -19,21 +19,37 @@ class main_app(tk.Tk):
         self.title("Голосовой помощник Галя")
         self.geometry('600x500')
         self.resizable(False, False)
-        self.configure(bg="pink")
+
+        # Создаем холст Canvas вместо фона
+        self.canvas = tk.Canvas(self, width=600, height=500)
+        self.canvas.pack()
+
+        # Загрузка изображения и добавление его на холст
+        self.bg_image = tk.PhotoImage(file="../images/background.png")
+        self.canvas.create_image(0, 0, anchor="nw", image=self.bg_image)
+
+        self.logo = tk.PhotoImage(file="../images/new_logo.png")  # Загрузка логотипа изображения
+        self.logo_label = tk.Label(self, image=self.logo)  # Создание метки для логотипа
+        self.logo_label.pack()
+        self.logo_label.place(relx=0.5, rely=0.3, anchor='center')
+
         self.button = tk.Button(self,
                                 command=self.start_action,
                                 width=20,
                                 height=5,
                                 activeforeground="#FFFFFF",
                                 activebackground="#22B14C",
-                                text="Говорить")
+                                text="Говорить",
+                                bg="#22B14C",  # Изменение цвета кнопки
+                                fg="#FFFFFF",  # Изменение цвета текста кнопки
+                                font=("Helvetica", 15, "bold"))  # Изменение шрифта кнопки
         self.button.pack()
-        self.button.place(relx=0.5, rely=0.5, anchor='center')
+        self.button.place(relx=0.5, rely=0.7, anchor='center')
 
     def start_action(self):
         self.button.config(state=tk.DISABLED)
         self.button.config(text="Слушаю и выполняю")
-        #click - лямбда-функция, которая работает с помощью обуцченной модели
+        # click - лямбда-функция, которая работает с помощью обученной модели
         thread = threading.Thread(target=lambda: recognise(self.speak_model_ru, self.speak_model_en,  self.model, self.tokenizer, self.lbl_encoder))
         thread.start()
         self.check_thread(thread)
@@ -87,6 +103,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
