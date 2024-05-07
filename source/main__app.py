@@ -38,9 +38,9 @@ class main_app(tk.Tk):
                                 width=20,
                                 height=5,
                                 activeforeground="#FFFFFF",
-                                activebackground="#22B14C",
+                                activebackground="#C0C0C0",
                                 text="Говорить",
-                                bg="#22B14C",  # Изменение цвета кнопки
+                                bg="#C0C0C0",  # Изменение цвета кнопки
                                 fg="#FFFFFF",  # Изменение цвета текста кнопки
                                 font=("Helvetica", 15, "bold"))  # Изменение шрифта кнопки
         self.button.pack()
