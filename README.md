@@ -1,8 +1,15 @@
 result, new_version, project26_03_2024 - это версии проекта без модуля Sequential</br>
 Давность этих версий проекта можно определить по времени коммита</br>
 
+***ВАЖНО!***</br>
+Ветка <ins>master</ins> является основной веткой - в ней лежит самая последняя версия проекта. Именно ее нужно использовать при клонировании проекта. Ветка <ins>main</ins> - разработка проекта, там находятся все этапы разработки проекта и коммиты, сделанные во время разработки
+
 Полезные сайты:</br>
-- https://stacktuts.com/how-to-use-after-method-in-tkinter
+- https://stacktuts.com/how-to-use-after-method-in-tkinter - метод after при работе с Tkinter
+- https://pypi.org/project/keras/ - документация Keras
+- https://pypi.org/project/scikit-learn/ - документация Scikit-learn
+- https://github.com/snakers4/silero-models - Git репозиторий с открытым кодом модели TTS Silero
+- https://www.tensorflow.org/?hl=ru - документация Tensorflow
 
 # Smart-assistant - умный голосовой помощник Галя
 
