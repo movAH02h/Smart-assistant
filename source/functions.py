@@ -8,14 +8,12 @@ from pycbrf import ExchangeRates
 from pyowm.utils.config import get_default_config
 import random
 import queue
-import pyttsx3
 from num2words import num2words
 import sounddevice as sd
 import vosk
 import locale
 import json
 import datetime
-from voice_assistant_data import data_set
 import time
 import wikipediaapi
 import urllib.parse
@@ -28,6 +26,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.header import Header
 import pymorphy2
+import voice_assistant_data.back_information as bi
 
 class NotFoundException(Exception):
     pass
@@ -132,12 +131,12 @@ def cash_rate(speak_model_ru, speak_model_en=None):
         elif units in [2, 3, 4]:
             return form_2
         elif units in [5, 6, 7, 8, 9]:
-            return form_2
+            return form_0
 
     currency = listen()
     total_rate = 0
     value = ''
-    for name in data_set.money:
+    for name in bi.money:
         current_rate = fuzz.ratio(name, currency)
         if current_rate > total_rate:
             total_rate = current_rate
@@ -148,8 +147,8 @@ def cash_rate(speak_model_ru, speak_model_en=None):
     else:
         currency = ''
 
-    if currency in data_set.money.keys():
-        value = data_set.money[currency]
+    if currency in bi.money.keys():
+        value = bi.money[currency]
         rates = ExchangeRates(str(datetime.datetime.now())[:10])
         currency_data = list(filter(lambda el: el.code == value, rates.rates))[0]
 
@@ -296,7 +295,8 @@ def to_do_list_add(speak_model_ru, speak_model_en=None):
     try:
         data = listen()
         file = open("../user_results/to_do_list.txt", "a+", encoding='utf8')
-        file.write(data + "\n")
+        file.write(data + ".\n")
+        file.write("--------------------------------------")
         file.close()
         say(f"Задача '{data}' добавлена в список дел.", speak_model_ru)
     except FileExistsError:
@@ -365,7 +365,7 @@ def send_message_to_all(speak_model_ru, speak_model_en=None):
 
     try:
         server.login(mail, password)
-        for other_mail in data_set.posts.values():
+        for other_mail in bi.posts.values():
             msg['To'] = other_mail
             server.sendmail(msg['From'], other_mail, msg.as_string())
         server.quit()
@@ -375,30 +375,21 @@ def send_message_to_all(speak_model_ru, speak_model_en=None):
         say("не получилось войти в почту при отправке.", speak_model_ru)
 
 
-# отправка сообщений по почте
 def send_message_to_one(speak_model_ru, speak_model_en=None):
 
     name = listen()
     current_rate = 0
     other_mail = ''
 
-    for key in data_set.posts.keys():
+    for key in bi.posts.keys():
         rate = fuzz.ratio(key, name)
         if rate > current_rate:
             current_rate = rate
-            other_mail = data_set.posts[key]
+            other_mail = bi.posts[key]
 
-    if (current_rate < 30):
-        say("такого человека я не знаю. Мне добавить его в список. да или нет.", speak_model_ru)
-
-        answer = listen()
-
-        if answer == "да":
-            post = input()
-            data_set.posts[name] = post
-        else:
-            return
-
+    if (current_rate < 70):
+        say("такого человека я не знаю. Попробуйте заново", speak_model_ru)
+        return
 
     mail = 'KARum2004@yandex.ru'
     say("что написать в письме.", speak_model_ru)
@@ -410,7 +401,7 @@ def send_message_to_one(speak_model_ru, speak_model_en=None):
         password = file.readline()
         file.close()
     except:
-        say("что-то не так спаролем от почты", speak_model_ru)
+        say("что-то не так с паролем от почты.", speak_model_ru)
 
     msg = MIMEText(f'{message}', 'plain', 'utf-8')
     msg['Subject'] = Header('От голосового помощника Кеши', 'utf-8')
@@ -423,8 +414,8 @@ def send_message_to_one(speak_model_ru, speak_model_en=None):
         server.sendmail(msg['From'], other_mail, msg.as_string())
         server.quit()
         say("письмо отправлено.", speak_model_ru)
-
     except Exception as _ex:
+        # Неправильно значит ввели пользователя, его надо удалить
         say("не получилось войти в почту при отправке.", speak_model_ru)
 
 
@@ -455,6 +446,18 @@ def offwork(speak_model_ru, speak_model_en=None):
 
 
 def weather_forecast(speak_model_ru, speak_model_en=None):
+    def declension(number, form_0, form_1, form_2):
+        units = number % 10
+        tens = (number // 10) % 10
+
+        if tens == 1:
+            return form_0
+        elif units == 1:
+            return form_1
+        elif units in [2, 3, 4]:
+            return form_2
+        elif units in [5, 6, 7, 8, 9]:
+            return form_0
 
     config_dict = get_default_config()
     config_dict['language'] = 'ru'
@@ -462,15 +465,22 @@ def weather_forecast(speak_model_ru, speak_model_en=None):
     manager = owm.weather_manager()
 
     city = listen()
-
     try:
         weather = manager.weather_at_place(city).weather
         forecast = weather.detailed_status
 
         temperature = weather.temperature('celsius').get('temp')
-        temperature = round(temperature)
+        degree_word = declension(temperature, 'градусов', 'градус', 'градуса')
+        temperature = num2words(round(temperature), lang='ru')
 
-        say(f'Температура в {city} сейчас {temperature}, {forecast}.', speak_model_ru)
+        morph = pymorphy2.MorphAnalyzer(lang='ru')
+        words_city = city.split()
+        for i in range(len(words_city)):
+            words_city[i] = morph.parse(words_city[i])[0].inflect({'masc', 'loct'}).word
+
+        city = ' '.join(words_city)
+
+        say(f'Температура в {city} сейчас {temperature} {degree_word}, {forecast}.', speak_model_ru)
     except Exception:
         say("Похоже город неверный!", speak_model_ru)
 
@@ -538,7 +548,7 @@ def recognise(speak_model_ru, speak_model_en,  model, tokenizer, lbl_encoder):
         text = listen()
         print(text)
 
-        trg = data_set.triggers.intersection(text.split())
+        trg = bi.triggers.intersection(text.split())
         if not trg:
             continue
 
@@ -580,6 +590,3 @@ def recognise(speak_model_ru, speak_model_en,  model, tokenizer, lbl_encoder):
                         say(random.choice(i['responses']), speak_model_ru)
         else:
             say("К сожалению, я пока не знаю, что вам ответить.", speak_model_ru)
-
-
-

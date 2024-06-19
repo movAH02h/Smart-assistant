@@ -81,11 +81,11 @@ def main():
 
     # Загрузка существующей модели русского языка - если есть на компьютере
     speak_model_ru = torch.package.PackageImporter(local_file_ru).load_pickle("tts_models", "model")
-    speak_model_ru.to(device)
+    #speak_model_ru.to(device)
 
     # загркзка существующей модели английского языка
     speak_model_en = torch.package.PackageImporter(local_file_en).load_pickle("tts_models", "model")
-    speak_model_en.to(device)
+    #speak_model_en.to(device)
 
     # load trained model
     model = keras.models.load_model('../neural_network/chat_model.keras')
