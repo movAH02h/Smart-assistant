@@ -153,15 +153,21 @@ def cash_rate(speak_model_ru, speak_model_en=None):
         currency_data = list(filter(lambda el: el.code == value, rates.rates))[0]
 
         value = str(round(currency_data.rate, 2)).split('.')
+        print(value)
         rubles_word = declension(int(value[0]), 'рублей', 'рубль', 'рубля')
         pennies_word = declension(int(value[1]), 'копеек', 'копейка', 'копейки')
 
-        rubles_number = num2words(value[0], lang='ru')
-        pennies_number = num2words(value[1], lang='ru').split()
+        rubles_number = num2words(int(value[0]), lang='ru')
+        pennies_number = num2words(int(value[1]), lang='ru').split()
+
 
         morph = pymorphy2.MorphAnalyzer(lang='ru')
-        pennies_number[-1] = morph.parse(pennies_number[-1])[0].inflect({'nomn', 'femn'}).word
-        pennies_number = ' '.join(pennies_number)
+        try:
+            pennies_number[-1] = morph.parse(pennies_number[-1])[0].inflect({'nomn', 'femn'}).word
+            pennies_number = ' '.join(pennies_number)
+        except Exception:
+            pennies_number = ' '.join(pennies_number)
+            pass
 
         answer = currency + ' ' + rubles_number + ' ' + rubles_word + ' ' + pennies_number + ' ' + pennies_word + '.'
         say(answer, speak_model_ru)
